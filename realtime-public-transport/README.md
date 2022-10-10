@@ -7,6 +7,7 @@ Input data: Public Transport - Realtime Vehicle Positions v2
   v
 vehicle-pos-producer (Rust app)
   |
+  | Protocol Buffers (gtfs-realtime_1007_extension.proto)
   v
 Kafka (topic: vehicle-pos)
   |
