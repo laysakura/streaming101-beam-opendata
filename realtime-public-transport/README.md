@@ -5,11 +5,14 @@ Input data: Public Transport - Realtime Vehicle Positions v2
 <https://opendata.transport.nsw.gov.au/dataset/public-transport-realtime-vehicle-positions-v2>
   |
   v
+vehicle-pos-producer (Rust app)
+  |
+  v
 Kafka (topic: vehicle-pos)
   |
   v
-Beam (Flink Runner)
+vehicle-pos-consumer (Beam w/ Flink)
   |
   v
-Kafka (topic: xxx)
+Kafka (topic: vehicle-result)
 ```
