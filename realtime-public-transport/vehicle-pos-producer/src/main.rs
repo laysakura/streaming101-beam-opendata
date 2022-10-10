@@ -1,3 +1,5 @@
+mod config;
+
 use std::time::Duration;
 
 use rdkafka::{
@@ -5,16 +7,22 @@ use rdkafka::{
     ClientConfig,
 };
 
+use crate::config::Config;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
+    let config = Config::from_env();
+
     let producer: FutureProducer = ClientConfig::new()
-        .set("bootstrap.servers", "localhost:9092")
+        .set("bootstrap.servers", &config.kafka_servers)
         .set("message.timeout.ms", "5000")
         .create()
         .expect("Producer creation error");
 
     let produce_future = producer.send(
-        FutureRecord::to("vehicle-pos")
+        FutureRecord::to(&config.kafka_topic)
             .key("some key")
             .payload("some payload"),
         Duration::from_secs(0),
