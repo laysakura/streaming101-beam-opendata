@@ -1,13 +1,19 @@
 [package]
 name = "vehicle-pos-producer"
 version = "0.1.0"
+
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-stream = "0.3"
 dotenvy = "0.15"
 env_logger = "0.9"
+futures-core = "0.3"
+futures-util = "0.3"
 log = "0.4"
-tokio = { version = "1.21", features = ["full"] }
-rdkafka = { version = "0.28", features = ["cmake-build"] }
+rdkafka = {version = "0.28", features = ["cmake-build"]}
+reqwest = "0.11"
+time = "0.3"
+tokio = {version = "1.21", features = ["full"]}
