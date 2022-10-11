@@ -1,6 +1,11 @@
 package com.github.laysakura.streaming101;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -30,6 +35,14 @@ public class VehiclePosConsumer {
         .withTopic("vehicle-pos")
         .withKeyDeserializer(ByteArrayDeserializer.class)
         .withValueDeserializer(ByteArrayDeserializer.class)
+
+        // We're writing to a file, which does not support unbounded data sources. This
+        // line makes it bounded to
+        // the first 5 records.
+        // In reality, we would likely be writing to a data source that supports
+        // unbounded data, such as BigQuery.
+        .withMaxNumRecords(5)
+
         .withoutMetadata() // KafkaRecord -> KV
     );
 
@@ -51,10 +64,20 @@ public class VehiclePosConsumer {
           @Override
           public Long apply(FeedMessage feedMessage) {
             FeedHeader feedHeader = feedMessage.getHeader();
-            Long unixtime = feedHeader.getTimestamp();
-            return unixtime;
+            return feedHeader.getTimestamp();
           }
         }));
+
+    unixtime
+        .apply("FormatResults", MapElements.via(new SimpleFunction<Long, String>() {
+          @Override
+          public String apply(Long unixtime) {
+            Instant instant = Instant.ofEpochSecond(unixtime);
+            ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(instant, ZoneId.of("Asia/Tokyo"));
+            return zonedDateTime.toString();
+          }
+        }))
+        .apply(TextIO.write().to("unixtime"));
 
     p.run().waitUntilFinish();
   }
