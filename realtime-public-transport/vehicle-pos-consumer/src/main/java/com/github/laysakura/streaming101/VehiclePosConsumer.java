@@ -2,11 +2,18 @@ package com.github.laysakura.streaming101;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
-import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Values;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.transit.realtime.GtfsRealtime1007Extension.FeedHeader;
+import com.google.transit.realtime.GtfsRealtime1007Extension.FeedMessage;
 
 public class VehiclePosConsumer {
 
@@ -16,11 +23,38 @@ public class VehiclePosConsumer {
   static void runWordCount(VehiclePosConsumerOptions options) {
     Pipeline p = Pipeline.create(options);
 
-    PCollection<KafkaRecord<byte[], byte[]>> kafka_record = p.apply(KafkaIO.readBytes()
+    PCollection<KV<byte[], byte[]>> kafkaRecord = p.apply("read from Kafka", KafkaIO.readBytes()
         .withBootstrapServers("localhost:9092")
         .withTopic("vehicle-pos")
         .withKeyDeserializer(ByteArrayDeserializer.class)
-        .withValueDeserializer(ByteArrayDeserializer.class));
+        .withValueDeserializer(ByteArrayDeserializer.class)
+        .withoutMetadata() // KafkaRecord -> KV
+    );
+
+    PCollection<FeedMessage> feedMessage = kafkaRecord
+        .apply("extract value from KV", Values.<byte[]>create())
+        .apply("deserialize to FeedMessage",
+            ParDo.of(new DoFn<byte[], FeedMessage>() {
+              @ProcessElement
+              public void processElement(@Element byte[] serialized,
+                  OutputReceiver<FeedMessage> outFeedMessage) throws InvalidProtocolBufferException {
+
+                FeedMessage feedMessage = FeedMessage.parseFrom(serialized);
+                outFeedMessage.output(feedMessage);
+              }
+            }));
+
+    PCollection<Long> unixtime = feedMessage.apply("extract unixtime from FeedHeader",
+        ParDo.of(new DoFn<FeedMessage, Long>() {
+          @ProcessElement
+          public void processElement(@Element FeedMessage feedMessage,
+              OutputReceiver<Long> outUnixtime) {
+
+            FeedHeader feedHeader = feedMessage.getHeader();
+            Long unixtime = feedHeader.getTimestamp();
+            outUnixtime.output(unixtime);
+          }
+        }));
 
     p.run().waitUntilFinish();
   }
