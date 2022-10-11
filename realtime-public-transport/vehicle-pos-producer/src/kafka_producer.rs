@@ -1,5 +1,6 @@
-use std::time::Duration;
+use std::{cell::RefCell, time::Duration};
 
+use rand::{rngs::ThreadRng, Rng};
 use rdkafka::{
     error::KafkaError,
     message::{OwnedMessage, ToBytes},
@@ -12,6 +13,8 @@ use crate::config::Config;
 pub(crate) struct KafkaProducer {
     producer: FutureProducer,
     topic: String,
+
+    rng: RefCell<ThreadRng>,
 }
 
 impl KafkaProducer {
@@ -20,6 +23,7 @@ impl KafkaProducer {
         Self {
             producer,
             topic: config.kafka_topic.clone(),
+            rng: RefCell::new(rand::thread_rng()),
         }
     }
 
@@ -30,8 +34,10 @@ impl KafkaProducer {
     where
         P: ToBytes + ?Sized,
     {
+        let key = self.rand_key();
+
         let f = self.producer.send(
-            FutureRecord::to(&self.topic).key("TODO").payload(payload),
+            FutureRecord::to(&self.topic).key(&key).payload(payload),
             Duration::from_secs(0),
         );
         f.await.map(|_| {
@@ -45,5 +51,10 @@ impl KafkaProducer {
             .set("message.timeout.ms", "5000")
             .create()
             .expect("failed to create Kafka producer")
+    }
+
+    fn rand_key(&self) -> [u8; 32] {
+        let mut rng = self.rng.borrow_mut();
+        rng.gen()
     }
 }
