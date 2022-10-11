@@ -27,7 +27,7 @@ public class VehiclePosConsumer {
   public interface VehiclePosConsumerOptions extends PipelineOptions {
   }
 
-  static void runWordCount(VehiclePosConsumerOptions options) {
+  static void run(VehiclePosConsumerOptions options) {
     Pipeline p = Pipeline.create(options);
 
     PCollection<KV<byte[], byte[]>> kafkaRecord = p.apply("read from Kafka", KafkaIO.readBytes()
@@ -86,6 +86,6 @@ public class VehiclePosConsumer {
     VehiclePosConsumerOptions options = PipelineOptionsFactory.fromArgs(args).withValidation()
         .as(VehiclePosConsumerOptions.class);
 
-    runWordCount(options);
+    run(options);
   }
 }
