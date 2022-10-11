@@ -5,7 +5,9 @@ import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -45,14 +47,12 @@ public class VehiclePosConsumer {
             }));
 
     PCollection<Long> unixtime = feedMessage.apply("extract unixtime from FeedHeader",
-        ParDo.of(new DoFn<FeedMessage, Long>() {
-          @ProcessElement
-          public void processElement(@Element FeedMessage feedMessage,
-              OutputReceiver<Long> outUnixtime) {
-
+        MapElements.via(new SimpleFunction<FeedMessage, Long>() {
+          @Override
+          public Long apply(FeedMessage feedMessage) {
             FeedHeader feedHeader = feedMessage.getHeader();
             Long unixtime = feedHeader.getTimestamp();
-            outUnixtime.output(unixtime);
+            return unixtime;
           }
         }));
 
